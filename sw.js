@@ -9,7 +9,7 @@
  *  - Tuiles de carte : "cache-first" avec plafond d'entrées (les tuiles changent peu).
  * Pour forcer une mise à jour chez les utilisateurs : incrémenter VERSION.
  */
-const VERSION = 'v1.1.1';
+const VERSION = 'v1.2.0';
 const SHELL_CACHE = 'shell-' + VERSION;
 const LIB_CACHE = 'libs-' + VERSION;
 const API_CACHE = 'api-v1';
@@ -33,7 +33,7 @@ const LIB_HOSTS = [
 ];
 const API_HOSTS = [
   'api.open-meteo.com', 'marine-api.open-meteo.com', 'geocoding-api.open-meteo.com',
-  'api.rainviewer.com', 'nominatim.openstreetmap.org'
+  'api.rainviewer.com', 'nominatim.openstreetmap.org', 'mesonet.agron.iastate.edu'
 ];
 const TILE_HOSTS = [
   'tile.openstreetmap.org', 'tile.opentopomap.org',

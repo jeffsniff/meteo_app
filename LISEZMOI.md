@@ -23,6 +23,23 @@ meteo-pwa/
 - Message « Nouvelle version disponible » quand `sw.js` change.
 - Marges pour l'encoche des iPhone en mode plein écran.
 
+## Version 1.2 — radar animé et relevés des stations
+
+### Radar des précipitations : 2 dernières heures
+- Bouton « Précipitations » de la carte → barre d'animation sous la carte : lecture/pause, image précédente/suivante, curseur, vitesse ×0,5 / ×1 / ×2, heure de l'image et ancienneté (« il y a N min »).
+- 13 images, une toutes les 10 minutes, préchargées puis enchaînées (changement d'opacité, sans rechargement).
+- Liste des images rafraîchie automatiquement toutes les 5 minutes tant que le radar est affiché.
+- Correction : la v1.1 demandait la palette n° 6 de RainViewer, supprimée depuis le 1er janvier 2026 ; le radar n'affichait donc plus rien.
+- Règles actuelles de l'API publique RainViewer (usage personnel/éducatif) : images passées seulement (pas de prévision immédiate), palette « Universal Blue » seule, zoom natif maximal 7 (au-delà, les images sont agrandies, donc plus floues), 100 requêtes par minute et par adresse IP. Des déplacements rapides et répétés de la carte pendant l'animation peuvent atteindre cette limite ; les tuiles déjà vues sont servies par le cache de l'app.
+
+### Relevés réels des stations
+- Bouton « Stations (relevés) » → une étiquette par station : température mesurée (couleur selon la température), flèche du vent.
+- Touchez une station : heure du relevé et ancienneté, température, point de rosée, humidité, vent (km/h, direction), rafales, QNH (hPa), visibilité, nuages (hauteur en m), temps présent, message METAR brut.
+- Source : messages METAR des aéroports français (métropole et outre-mer, environ 80 stations), via l'API de l'Iowa Environmental Mesonet (Iowa State University). Sans clé, accessible directement depuis le navigateur.
+- Fréquence : en général un relevé toutes les 30 min ou toutes les heures selon l'aéroport. Relevé de plus de 90 min : étiquette grisée. Plus de 6 h : station masquée. Actualisation automatique toutes les 10 min.
+- Conversions effectuées par l'app : °F → °C, nœuds → km/h, miles → km, inHg → hPa.
+- Limite : le réseau METAR ne couvre que les aéroports. Le réseau sol complet de Météo-France (plusieurs centaines de stations, relevés toutes les 6 min ou toutes les heures) passe par l'API « Données d'observation » du portail Météo-France, qui exige un compte et une clé ; il n'est pas intégré.
+
 ## Version 1.1 — nouveau graphisme
 
 - Thème sombre « verre dépoli » (palette bleu nuit / bleu ciel / ambre), polices Space Grotesk, Inter et JetBrains Mono.

@@ -54,7 +54,7 @@ tailwind.config={darkMode:"class",theme:{extend:{
   .glass{background:rgba(26,31,45,.6); backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px); border-radius:.75rem; box-shadow:0 20px 25px -5px rgba(0,0,0,.25),0 8px 10px -6px rgba(0,0,0,.2);}
   .tile{background:rgba(22,27,41,.8); border-radius:.5rem; padding:.5rem .65rem; display:flex; flex-direction:column;}
   .label{font-family:'JetBrains Mono',monospace; font-size:11px; line-height:14px; letter-spacing:.08em; font-weight:600; text-transform:uppercase; color:var(--on-s-var);}
-  .icon-btn{width:2rem;height:2rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;color:var(--on-s-var);transition:all .2s;}
+  .icon-btn{width:2rem;height:2rem;border-radius:.5rem;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--on-s-var);transition:all .2s;}
   .icon-btn:hover{color:var(--primary);background:var(--s-high);}
   .spin{animation:spin .8s linear infinite;} @keyframes spin{to{transform:rotate(360deg);}}
 
@@ -120,6 +120,12 @@ tailwind.config={darkMode:"class",theme:{extend:{
   #mapWrapper:fullscreen,#mapWrapper:-webkit-full-screen{height:100vh!important;width:100vw!important;}
   /* OSM sombre : tuiles OSM standard inversées puis recolorées vers la palette bleu nuit */
   .leaflet-tile-pane .osm-dark{filter:invert(1) hue-rotate(185deg) brightness(.82) contrast(.92) saturate(.55);}
+  .stn{display:flex;align-items:center;gap:2px;transform:translate(-50%,-50%);width:max-content;position:absolute;left:0;top:0;}
+  .stn-t{padding:2px 6px;border-radius:9999px;font:700 11px/14px 'JetBrains Mono',monospace;color:#04222c;box-shadow:0 0 0 2px rgba(13,19,32,.85),0 2px 6px rgba(0,0,0,.5);}
+  .stn-w{display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(13,19,32,.85);color:#dde2f5;}
+  .stn.old{opacity:.5;}
+  .stn-pop td{padding:1px 8px 1px 0;font-size:12px;} .stn-pop td:first-child{color:#bdc8d1;}
+  .stn-pop .raw{font:10.5px/1.35 'JetBrains Mono',monospace;color:#8ed5ff;margin-top:6px;word-break:break-word;max-width:250px;}
   .wind-arrow{color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;}
 
   /* Frise temporelle */
@@ -374,10 +380,33 @@ tailwind.config={darkMode:"class",theme:{extend:{
         <button class="map-layer-btn" type="button" data-layer="radar" onclick="toggleRadar(this)"><span class="dot"></span>Précipitations</button>
         <button class="map-layer-btn" type="button" data-layer="temp" onclick="toggleGridLayer(this)"><span class="dot"></span>Températures 2m</button>
         <button class="map-layer-btn" type="button" data-layer="wind" onclick="toggleGridLayer(this)"><span class="dot"></span>Vents 10m</button>
+        <button class="map-layer-btn" type="button" data-layer="stations" onclick="toggleStations(this)"><span class="dot"></span>Stations (relevés)</button>
       </div>
     </div>
     <div id="mapWrapper" class="relative w-full h-[400px] md:h-[480px] bg-surface-container-lowest overflow-hidden">
       <div id="weatherMap"></div>
+    </div>
+    <!-- Animation radar : 2 dernières heures -->
+    <div id="radarBar" class="px-space-md py-2.5 bg-surface-container-low/90 items-center gap-2 flex-wrap" style="display:none;">
+      <span class="material-symbols-outlined text-primary text-[18px]">radar</span>
+      <button id="radarPrev" type="button" class="icon-btn" title="Image précédente"><span class="material-symbols-outlined text-[20px]">skip_previous</span></button>
+      <button id="radarPlay" type="button" title="Lecture / pause" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0"><span id="radarPlayIcon" class="material-symbols-outlined ms-fill text-[18px]">play_arrow</span></button>
+      <button id="radarNext" type="button" class="icon-btn" title="Image suivante"><span class="material-symbols-outlined text-[20px]">skip_next</span></button>
+      <div class="flex-1 min-w-[180px] flex flex-col">
+        <div class="flex justify-between font-data-sm text-[11px] text-on-surface-variant">
+          <span id="radarFirst">--</span><span id="radarTime" class="text-primary font-semibold">Chargement du radar...</span><span id="radarLast">--</span>
+        </div>
+        <input id="radarSlider" type="range" min="0" max="0" value="0" step="1" class="w-full">
+      </div>
+      <select id="radarSpeed" title="Vitesse" class="bg-surface-container-high/60 rounded px-1.5 py-1 text-primary font-data-sm text-[11px] focus:outline-none">
+        <option value="1000">×0,5</option><option value="500" selected>×1</option><option value="250">×2</option>
+      </select>
+    </div>
+    <!-- Relevés des stations -->
+    <div id="stationsBar" class="px-space-md py-2 bg-surface-container-low/90 items-center gap-2 font-data-sm text-data-sm text-on-surface-variant" style="display:none;">
+      <span class="material-symbols-outlined text-[16px] text-primary">sensors</span>
+      <span id="stationsInfo" class="min-w-0">--</span>
+      <button id="stationsRefresh" type="button" class="icon-btn ml-auto shrink-0" title="Actualiser les relevés"><span class="material-symbols-outlined text-[16px]">sync</span></button>
     </div>
     <div class="p-space-md bg-surface-container-low/80 flex flex-col md:flex-row items-center justify-between gap-space-md">
       <div class="w-full md:w-auto flex items-center gap-space-md">
@@ -496,7 +525,7 @@ tailwind.config={darkMode:"class",theme:{extend:{
     <p class="font-body-sm text-body-sm text-on-surface-variant">
       <span class="text-on-surface font-medium">Sources (gratuites, sans clé API) :</span>
       prévisions Open-Meteo — modèles ECMWF IFS, NOAA GFS, DWD ICON/ICON-EU, Météo-France ARPEGE/AROME, Environnement Canada GEM, UK Met Office, JMA, KNMI, DMI, MET Norway.
-      Marée/mer : Open-Meteo Marine. Radar : RainViewer. Fonds de carte : OpenStreetMap, IGN Géoplateforme, OpenTopoMap. Recherche : Open-Meteo Geocoding, Nominatim (OSM).
+      Marée/mer : Open-Meteo Marine. Radar : RainViewer (2 dernières heures). Relevés de stations : METAR via Iowa Environmental Mesonet (Iowa State University). Fonds de carte : OpenStreetMap, IGN Géoplateforme, OpenTopoMap. Recherche : Open-Meteo Geocoding, Nominatim (OSM).
     </p>
     <div class="flex items-center justify-between font-data-sm text-data-sm text-on-surface-variant">
       <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span>Weather or not</span>
@@ -606,9 +635,8 @@ const state = {
   lat:48.8566, lon:2.3522, name:'Paris', sub:'Île-de-France, France',
   model:'best_match', tempUnit:'celsius',
   data:null, idx:0,
-  activeLayers:{temp:false, wind:false, radar:false},
+  activeLayers:{temp:false, wind:false, radar:false, stations:false},
   gridData:null, gridFetchToken:0,
-  radarFrames:[], radarHost:null, radarLayer:null, radarIdx:0,
   playTimer:null,
   coastToken:0, marineToken:0, marineData:null,
   compareToken:0, compareData:null
@@ -793,6 +821,7 @@ window.switchUnit = function(btn){
   renderCurrent(); renderTempChart(); renderPrecipChart(); renderDaily();
   if(state.marineData) renderMarineSection();
   if(state.gridData) renderGridLayer();
+  if(state.stations&&state.stations.data) renderStations();
   if(state.compareData) renderCompare();
   renderHourly();
 };
@@ -1312,25 +1341,183 @@ function renderGridLayer(kind){
 }
 
 /* ===================== LAYER: RADAR (RainViewer) ===================== */
+// API publique RainViewer (règles 2026) : uniquement les images passées (2 h, pas de 10 min),
+// palette « Universal Blue » (code 2) seule disponible, zoom natif max 7, 100 requêtes/min/IP.
+// Les 13 images sont préchargées comme couches transparentes ; l'animation ne fait que changer l'opacité.
+const RV_API='https://api.rainviewer.com/public/weather-maps.json';
+const RV_MAXZ=7, RV_OPACITY=0.75;
+state.radar={frames:[],layers:[],host:null,idx:0,timer:null,refresh:null};
 window.toggleRadar = function(btn){
+  const R=state.radar;
   if(state.activeLayers.radar){
     state.activeLayers.radar=false; btn.classList.remove('on');
-    if(state.radarLayer){map.removeLayer(state.radarLayer);state.radarLayer=null;} return;
+    radarPause(); clearInterval(R.refresh); R.refresh=null;
+    R.layers.forEach(l=>map.removeLayer(l)); R.layers=[]; R.frames=[];
+    $('#radarBar').style.display='none'; return;
   }
   state.activeLayers.radar=true; btn.classList.add('on');
-  fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()).then(d=>{
-    const past=(d.radar&&d.radar.past)||[], nowcast=(d.radar&&d.radar.nowcast)||[];
-    state.radarFrames=past.concat(nowcast); state.radarHost=d.host;
-    state.radarIdx=past.length?past.length-1:0;
-    showRadarFrame();
-  }).catch(()=>{ $('#curDesc').textContent+=' (radar indisponible)'; });
+  $('#radarBar').style.display='flex';
+  $('#radarTime').textContent='Chargement du radar...';
+  loadRadarFrames(true);
+  R.refresh=setInterval(()=>loadRadarFrames(false),5*60*1000); // nouvelles images toutes les 10 min côté serveur
 };
-function showRadarFrame(){
-  if(!state.radarFrames.length) return;
-  if(state.radarLayer) map.removeLayer(state.radarLayer);
-  const frame=state.radarFrames[state.radarIdx];
-  state.radarLayer=L.tileLayer(state.radarHost+frame.path+'/256/{z}/{x}/{y}/6/1_1.png',{opacity:.55,zIndex:400}).addTo(map);
+function radarLayerFor(f){
+  return L.tileLayer(state.radar.host+f.path+'/512/{z}/{x}/{y}/2/1_1.png',{
+    tileSize:512, zoomOffset:-1, minNativeZoom:1, maxNativeZoom:RV_MAXZ+1, maxZoom:20,
+    opacity:0, zIndex:400,
+    attribution:'Radar : <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>'
+  });
 }
+async function loadRadarFrames(first){
+  const R=state.radar;
+  try{
+    const r=await fetch(RV_API,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const past=(d.radar&&d.radar.past)||[];
+    if(!past.length) throw new Error('aucune image');
+    if(!state.activeLayers.radar) return;
+    const keep=new Map(R.frames.map((f,k)=>[f.path,R.layers[k]]));
+    const wasLast=R.idx>=R.frames.length-1;
+    R.host=d.host;
+    const layers=past.map(f=>{
+      const l=keep.get(f.path);
+      if(l){ keep.delete(f.path); return l; }
+      return radarLayerFor(f).addTo(map);
+    });
+    keep.forEach(l=>map.removeLayer(l));
+    R.frames=past; R.layers=layers;
+    const sl=$('#radarSlider'); sl.max=past.length-1;
+    if(first||wasLast) R.idx=past.length-1;
+    R.idx=Math.min(R.idx,past.length-1);
+    $('#radarFirst').textContent=fmtRadarClock(past[0].time);
+    $('#radarLast').textContent=fmtRadarClock(past[past.length-1].time);
+    showRadarFrame(R.idx);
+  }catch(err){
+    console.warn('Radar :',err);
+    $('#radarTime').textContent='Radar indisponible ('+err.message+')';
+  }
+}
+function fmtRadarClock(ts){ return new Date(ts*1000).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function showRadarFrame(i){
+  const R=state.radar; if(!R.frames.length) return;
+  R.idx=i;
+  R.layers.forEach((l,k)=>l.setOpacity(k===i?RV_OPACITY:0));
+  $('#radarSlider').value=i;
+  const ts=R.frames[i].time, ago=Math.round((Date.now()/1000-ts)/60);
+  $('#radarTime').textContent=fmtRadarClock(ts)+(i===R.frames.length-1?' · dernière image':'')+' (il y a '+ago+' min)';
+}
+function radarPause(){
+  const R=state.radar; if(R.timer){ clearTimeout(R.timer); R.timer=null; }
+  $('#radarPlayIcon').textContent='play_arrow';
+}
+function radarPlay(){
+  const R=state.radar; if(!R.frames.length) return;
+  $('#radarPlayIcon').textContent='pause';
+  const step=()=>{
+    const delay=parseInt($('#radarSpeed').value,10)||500;
+    const last=R.frames.length-1;
+    const next=R.idx>=last?0:R.idx+1;
+    showRadarFrame(next);
+    R.timer=setTimeout(step, next===last?delay*3:delay); // pause plus longue sur la dernière image
+  };
+  if(R.idx>=R.frames.length-1) showRadarFrame(0);
+  R.timer=setTimeout(step, parseInt($('#radarSpeed').value,10)||500);
+}
+$('#radarPlay').addEventListener('click',()=>{ state.radar.timer?radarPause():radarPlay(); });
+$('#radarPrev').addEventListener('click',()=>{ const R=state.radar; if(!R.frames.length) return; radarPause(); showRadarFrame((R.idx-1+R.frames.length)%R.frames.length); });
+$('#radarNext').addEventListener('click',()=>{ const R=state.radar; if(!R.frames.length) return; radarPause(); showRadarFrame((R.idx+1)%R.frames.length); });
+$('#radarSlider').addEventListener('input',e=>{ radarPause(); showRadarFrame(parseInt(e.target.value,10)); });
+
+/* ===================== LAYER: STATIONS (relevés METAR) ===================== */
+// Source : Iowa Environmental Mesonet (Iowa State University), API v1 /currents, réseau FR__ASOS
+// = METAR des aéroports français (métropole et outre-mer). Sans clé, CORS ouvert.
+// Unités source : °F, nœuds, miles terrestres, inHg → converties ici.
+const IEM_CURRENTS='https://mesonet.agron.iastate.edu/api/1/currents.json?network=FR__ASOS';
+const STN_MAX_AGE_MIN=360, STN_OLD_MIN=90;
+state.stations={data:null,layer:null,timer:null,fetchedAt:null};
+const f2c=f=>f==null?null:(f-32)*5/9;
+const kt2kmh=k=>k==null?null:k*1.852;
+window.toggleStations = function(btn){
+  const S=state.stations;
+  if(state.activeLayers.stations){
+    state.activeLayers.stations=false; btn.classList.remove('on');
+    clearInterval(S.timer); S.timer=null;
+    if(S.layer){ map.removeLayer(S.layer); S.layer=null; }
+    $('#stationsBar').style.display='none'; return;
+  }
+  state.activeLayers.stations=true; btn.classList.add('on');
+  $('#stationsBar').style.display='flex';
+  loadStations();
+  S.timer=setInterval(loadStations,10*60*1000);
+};
+async function loadStations(){
+  const S=state.stations;
+  $('#stationsInfo').textContent='Chargement des relevés...';
+  try{
+    const r=await fetch(IEM_CURRENTS,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    S.data=Array.isArray(j)?j:(j.data||[]);
+    S.fetchedAt=new Date();
+    renderStations();
+  }catch(err){
+    console.warn('Stations :',err);
+    $('#stationsInfo').textContent='Relevés indisponibles ('+err.message+')';
+  }
+}
+function stationPopup(o,c,ageMin){
+  const rows=[];
+  const add=(k,v)=>{ if(v!=null&&v!=='') rows.push(`<tr><td>${k}</td><td>${v}</td></tr>`); };
+  const t=new Date(Date.parse(o.utc_valid));
+  add('Relevé',t.toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+` (il y a ${Math.round(ageMin)} min)`);
+  add('Température',cToDisplay(c)+unitSuffix());
+  if(o.dwpf!=null) add('Point de rosée',cToDisplay(f2c(o.dwpf))+unitSuffix());
+  if(o.relh!=null) add('Humidité',Math.round(o.relh)+' %');
+  if(o.sknt!=null){
+    const dir=typeof o.drct==='number'?degToCompass(o.drct)+' ('+Math.round(o.drct)+'°)':'variable';
+    add('Vent',Math.round(kt2kmh(o.sknt))+' km/h · '+(o.sknt>0?dir:'calme'));
+  }
+  if(o.gust!=null) add('Rafales',Math.round(kt2kmh(o.gust))+' km/h');
+  if(o.alti!=null) add('QNH',Math.round(o.alti*33.8639)+' hPa');
+  if(o.vsby!=null) add('Visibilité',o.vsby>=6.2?'≥ 10 km':(o.vsby*1.609344).toFixed(1)+' km');
+  const sky=[1,2,3,4].map(n=>o['skyc'+n]?o['skyc'+n]+(o['skyl'+n]!=null?' '+Math.round(o['skyl'+n]*0.3048/10)*10+' m':''):null).filter(Boolean).join(', ');
+  add('Nuages',sky||null);
+  add('Temps présent',o.wxcodes||null);
+  return `<div class="stn-pop"><b>${o.name||o.station}</b> <span style="color:#87929a">${o.station}</span>
+    <table>${rows.join('')}</table>
+    ${o.raw?`<div class="raw">${o.raw}</div>`:''}
+    <div style="color:#87929a;font-size:10.5px;margin-top:5px">METAR · source IEM (Iowa State Univ.)</div></div>`;
+}
+function renderStations(){
+  const S=state.stations;
+  if(!S.data||!state.activeLayers.stations) return;
+  if(S.layer) map.removeLayer(S.layer);
+  S.layer=L.layerGroup().addTo(map);
+  const now=Date.now(); let shown=0, old=0, skipped=0, newest=0;
+  S.data.forEach(o=>{
+    if(o.lat==null||o.lon==null||!o.utc_valid||o.tmpf==null){ skipped++; return; }
+    const ts=Date.parse(o.utc_valid), ageMin=(now-ts)/60000;
+    if(!(ageMin<=STN_MAX_AGE_MIN)){ skipped++; return; }
+    const c=f2c(o.tmpf), isOld=ageMin>STN_OLD_MIN;
+    if(isOld) old++;
+    newest=Math.max(newest,ts);
+    const arrow=(o.sknt>0&&typeof o.drct==='number')
+      ?`<span class="stn-w" title="${Math.round(kt2kmh(o.sknt))} km/h"><span class="material-symbols-outlined" style="font-size:13px;transform:rotate(${o.drct+180}deg)">navigation</span></span>`:'';
+    L.marker([o.lat,o.lon],{
+      icon:L.divIcon({className:'',html:`<div class="stn${isOld?' old':''}"><span class="stn-t" style="background:${tempColor(c)}">${cToDisplay(c)}°</span>${arrow}</div>`,iconSize:[0,0]}),
+      zIndexOffset:1000, keyboard:false
+    }).bindPopup(stationPopup(o,c,ageMin),{maxWidth:280}).addTo(S.layer);
+    shown++;
+  });
+  const fetched=S.fetchedAt?S.fetchedAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'--';
+  $('#stationsInfo').textContent=`${shown} stations METAR (aéroports)`
+    +(newest?` · relevé le plus récent ${new Date(newest).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`:'')
+    +(old?` · ${old} relevé(s) de plus de ${STN_OLD_MIN} min en grisé`:'')
+    +(skipped?` · ${skipped} non affichée(s) (relevé de plus de 6 h ou sans température)`:'')
+    +` · chargé à ${fetched}`;
+}
+$('#stationsRefresh').addEventListener('click',loadStations);
 
 /* ===================== SNOW SECTION ===================== */
 function renderSnowSection(){
