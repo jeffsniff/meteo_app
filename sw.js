@@ -9,7 +9,7 @@
  *  - Tuiles de carte : "cache-first" avec plafond d'entrées (les tuiles changent peu).
  * Pour forcer une mise à jour chez les utilisateurs : incrémenter VERSION.
  */
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.3.0';
 const SHELL_CACHE = 'shell-' + VERSION;
 const LIB_CACHE = 'libs-' + VERSION;
 const API_CACHE = 'api-v1';

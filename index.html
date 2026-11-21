@@ -164,6 +164,19 @@ tailwind.config={darkMode:"class",theme:{extend:{
     #searchInput{font-size:16px;}
   }
 
+  /* Favoris */
+  .fav-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;background:rgba(22,27,41,.7);border-radius:.75rem;padding:8px 8px 8px 12px;transition:background .2s;}
+  .fav-card:hover{background:var(--s-high);}
+  .fav-card.current{box-shadow:inset 0 0 0 1px rgba(56,189,248,.5);}
+  .fav-link{display:flex;align-items:center;gap:12px;flex:1 1 220px;min-width:0;color:inherit;text-decoration:none;}
+  .fav-name{display:block;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fav-sub{display:block;font-size:11.5px;color:var(--on-s-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fav-temp{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:18px;white-space:nowrap;}
+  .fav-actions{display:flex;gap:2px;margin-left:auto;}
+  .fav-name-input{background:var(--s-high);border-radius:.375rem;padding:2px 6px;font-size:15px;width:100%;color:var(--on-s);outline:none;}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:1300;background:rgba(36,42,56,.96);color:var(--on-s);border-radius:.5rem;padding:8px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.45);display:none;}
+  @media (max-width:767px){ #toast{bottom:calc(88px + env(safe-area-inset-bottom));} }
+
   /* Navigation basse (mobile) */
   .bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px;height:100%;color:var(--on-s-var);transition:all .2s;}
   .bottom-nav a.active{color:var(--primary);font-weight:600;filter:drop-shadow(0 0 8px rgba(56,189,248,.6));}
@@ -251,6 +264,7 @@ tailwind.config={darkMode:"class",theme:{extend:{
           </div>
         </div>
         <div class="flex items-center gap-1 bg-surface-container-low/70 p-1 rounded-lg shrink-0">
+          <button class="icon-btn" id="btnFav" type="button" title="Ajouter aux favoris"><span class="material-symbols-outlined text-[18px]">star</span></button>
           <button class="icon-btn" id="btnGps" type="button" title="Me localiser"><span class="material-symbols-outlined text-[18px]">near_me</span></button>
           <button class="icon-btn" id="btnRefresh" type="button" title="Actualiser"><span class="material-symbols-outlined text-[18px]" id="refreshIcon">sync</span></button>
         </div>
@@ -457,6 +471,7 @@ tailwind.config={darkMode:"class",theme:{extend:{
       <button class="section-tabbtn active" type="button" data-stab="forecast" onclick="switchSectionTab(this)"><span class="material-symbols-outlined text-[18px]">calendar_month</span>Prévisions</button>
       <button class="section-tabbtn" type="button" data-stab="compare" onclick="switchSectionTab(this)"><span class="material-symbols-outlined text-[18px]">stacked_line_chart</span>Comparaison modèles</button>
       <button class="section-tabbtn" type="button" data-stab="marine" onclick="switchSectionTab(this)"><span class="material-symbols-outlined text-[18px]">tsunami</span>Marine &amp; neige</button>
+      <button class="section-tabbtn" type="button" data-stab="favorites" onclick="switchSectionTab(this)"><span class="material-symbols-outlined text-[18px]">bookmarks</span>Favoris</button>
     </div>
 
     <div class="glass p-space-md">
@@ -481,6 +496,26 @@ tailwind.config={darkMode:"class",theme:{extend:{
         <div style="height:220px;"><canvas id="cmpChart"></canvas></div>
         <div class="label mt-space-lg mb-2">Indice UV par modèle</div>
         <div class="cmp-tablewrap" style="max-height:220px;overflow-y:auto;"><table class="cmp-table" id="cmpUvTable"></table></div>
+      </div>
+
+      <div class="section-tabpanel" id="stabFavorites">
+        <div class="flex items-start justify-between flex-wrap gap-2 mb-space-md">
+          <div>
+            <span class="font-headline-sm text-headline-sm text-on-surface">Lieux favoris</span>
+            <span id="favCount" class="label ml-2"></span>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Touchez un lieu pour afficher sa météo. Le bouton <span class="material-symbols-outlined text-[14px]">link</span> copie un lien qui ouvre l'app directement sur ce lieu.</p>
+          </div>
+          <button id="favAddCurrent" type="button" class="px-3 py-1.5 rounded-lg bg-primary-container text-on-primary-container font-data-sm text-data-sm flex items-center gap-1.5 disabled:opacity-40">
+            <span class="material-symbols-outlined text-[16px]">add_location_alt</span><span id="favAddLabel">Ajouter le lieu affiché</span>
+          </button>
+        </div>
+        <div id="favList" class="flex flex-col gap-2"></div>
+        <div id="favEmpty" class="text-center py-8 text-on-surface-variant font-body-sm text-body-sm">
+          <span class="material-symbols-outlined text-[22px] text-outline">bookmarks</span><br>
+          Aucun favori pour l'instant.<br>
+          <span class="text-outline">Utilisez l'étoile à côté du nom du lieu, ou le bouton « Ajouter le lieu affiché ».</span>
+        </div>
+        <p id="favStatus" class="font-data-sm text-data-sm text-outline mt-3"></p>
       </div>
 
       <div class="section-tabpanel" id="stabMarine">
@@ -542,9 +577,11 @@ tailwind.config={darkMode:"class",theme:{extend:{
     <a href="#" data-nav="secHourly"><span class="material-symbols-outlined text-[22px]">schedule</span><span class="font-label-caps text-label-caps tracking-tighter">Heures</span></a>
     <a href="#" data-nav="secTabs" data-tab="compare"><span class="material-symbols-outlined text-[22px]">stacked_line_chart</span><span class="font-label-caps text-label-caps tracking-tighter">Modèles</span></a>
     <a href="#" data-nav="secTabs" data-tab="marine"><span class="material-symbols-outlined text-[22px]">tsunami</span><span class="font-label-caps text-label-caps tracking-tighter">Marine/Ski</span></a>
+    <a href="#" data-nav="secTabs" data-tab="favorites"><span class="material-symbols-outlined text-[22px]">bookmarks</span><span class="font-label-caps text-label-caps tracking-tighter">Favoris</span></a>
   </div>
 </nav>
 
+<div id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div><span id="loadingText">Chargement...</span></div>
 <div id="iosHint">Pour installer : touchez <b>Partager</b>, puis <b>Sur l'écran d'accueil</b>. <a href="#" id="iosHintClose" class="text-primary ml-2">OK</a></div>
 <div id="updateToast"><span>Nouvelle version disponible</span><button class="pwa-btn" style="display:inline-flex;" id="updateBtn" type="button">Mettre à jour</button></div>
@@ -822,6 +859,7 @@ window.switchUnit = function(btn){
   if(state.marineData) renderMarineSection();
   if(state.gridData) renderGridLayer();
   if(state.stations&&state.stations.data) renderStations();
+  renderFavs();
   if(state.compareData) renderCompare();
   renderHourly();
 };
@@ -833,6 +871,7 @@ window.switchSectionTab = function(btn){
   btn.classList.add('active');
   const tab=btn.dataset.stab;
   $('#stab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+  if(tab==='favorites') refreshFavWeatherIfStale();
   requestAnimationFrame(()=>{
     if(tempChartInst) tempChartInst.resize();
     if(precipChartInst) precipChartInst.resize();
@@ -883,10 +922,14 @@ function reverseGeocode(lat,lon){
 /* ===================== SET LOCATION ===================== */
 function saveLastLocation(){
   try{ localStorage.setItem('won_lastLocation', JSON.stringify({lat:state.lat,lon:state.lon,name:state.name,sub:state.sub})); }catch(e){}
+  try{ history.replaceState(null,'',locHash(state.lat,state.lon,state.name,state.sub)); }catch(e){}
+  if(typeof updateFavStar==='function'){ updateFavStar(); renderFavs(); }
 }
 function setLocation(lat,lon,name,sub){
   state.lat=lat; state.lon=lon;
   marker.setLatLng([lat,lon]);
+  state.namePending=!name;
+  if(typeof updateFavStar==='function') updateFavStar();
   if(name){
     state.name=name; state.sub=sub||'';
     updateLocationUI();
@@ -897,6 +940,8 @@ function setLocation(lat,lon,name,sub){
     $('#locCoords').textContent=fmtCoords(lat,lon);
     fetchWeather();
     reverseGeocode(lat,lon).then(res=>{
+      if(state.lat!==lat||state.lon!==lon) return; // un autre lieu a été choisi entre-temps
+      state.namePending=false;
       state.name=res.name; state.sub=res.sub;
       updateLocationUI();
     });
@@ -1725,11 +1770,165 @@ function updateClock(){
 }
 setInterval(updateClock,1000); updateClock();
 
+/* ===================== FAVORIS ===================== */
+// Stockés dans le navigateur (localStorage) : propres à chaque appareil et à chaque navigateur.
+// Lien direct vers un lieu : index.html#lieu=LAT,LON&nom=NOM&info=RÉGION
+const FAV_KEY='won_favorites';
+function loadFavs(){
+  try{ const a=JSON.parse(localStorage.getItem(FAV_KEY)||'[]');
+    return Array.isArray(a)?a.filter(f=>f&&isFinite(f.lat)&&isFinite(f.lon)):[]; }catch(e){ return []; }
+}
+function saveFavs(){ try{ localStorage.setItem(FAV_KEY,JSON.stringify(state.favs)); }catch(e){ showToast('Enregistrement impossible (stockage du navigateur indisponible)'); } }
+state.favs=loadFavs(); state.favWx={}; state.favWxAt=0;
+const favKey=(lat,lon)=>Number(lat).toFixed(3)+','+Number(lon).toFixed(3);
+const isFav=(lat,lon)=>state.favs.some(f=>favKey(f.lat,f.lon)===favKey(lat,lon));
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function locHash(lat,lon,name,sub){
+  const p=new URLSearchParams(); p.set('lieu',Number(lat).toFixed(4)+','+Number(lon).toFixed(4));
+  if(name) p.set('nom',name); if(sub) p.set('info',sub);
+  return '#'+p.toString().replace(/%2C/gi,',');
+}
+function parseLocHash(hash){
+  const p=new URLSearchParams((hash||'').replace(/^#/,'')), l=p.get('lieu');
+  if(!l) return null;
+  const [a,b]=l.split(',').map(Number);
+  if(!isFinite(a)||!isFinite(b)||Math.abs(a)>90||Math.abs(b)>180) return null;
+  return {lat:a,lon:b,name:p.get('nom')||null,sub:p.get('info')||''};
+}
+function favUrl(f){ return location.href.split('#')[0]+locHash(f.lat,f.lon,f.name,f.sub); }
+let toastTimer=null;
+function showToast(msg){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.display='none',2200); }
+function goToLocation(lat,lon,name,sub){
+  map.setView([lat,lon],Math.max(map.getZoom(),8));
+  setLocation(lat,lon,name,sub);
+  document.getElementById('secDirect').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function updateFavStar(){
+  const on=isFav(state.lat,state.lon), b=$('#btnFav'), ic=b.querySelector('span');
+  ic.classList.toggle('ms-fill',on); b.style.color=on?'#ffc42f':'';
+  b.title=on?'Retirer des favoris':'Ajouter aux favoris';
+  const add=$('#favAddCurrent'); add.disabled=on;
+  $('#favAddLabel').textContent=on?'Lieu affiché déjà en favori':'Ajouter le lieu affiché';
+}
+function addCurrentFav(){
+  if(isFav(state.lat,state.lon)) return;
+  const name=state.namePending?fmtCoords(state.lat,state.lon):(state.name||fmtCoords(state.lat,state.lon));
+  state.favs.push({id:Date.now().toString(36),name,sub:state.namePending?'':(state.sub||''),lat:+state.lat.toFixed(4),lon:+state.lon.toFixed(4)});
+  saveFavs(); updateFavStar(); renderFavs(); fetchFavWeather();
+  showToast('« '+name+' » ajouté aux favoris');
+}
+function removeFav(k){
+  const f=state.favs[k]; if(!f) return;
+  state.favs.splice(k,1); saveFavs(); updateFavStar(); renderFavs();
+  showToast('« '+f.name+' » retiré des favoris');
+}
+$('#btnFav').addEventListener('click',()=>{
+  if(isFav(state.lat,state.lon)) removeFav(state.favs.findIndex(f=>favKey(f.lat,f.lon)===favKey(state.lat,state.lon)));
+  else addCurrentFav();
+});
+$('#favAddCurrent').addEventListener('click',addCurrentFav);
+
+function renderFavs(){
+  const list=$('#favList'), n=state.favs.length, cur=favKey(state.lat,state.lon);
+  $('#favCount').textContent=n?n+(n>1?' lieux':' lieu'):'';
+  $('#favEmpty').style.display=n?'none':'block';
+  list.innerHTML=state.favs.map((f,k)=>{
+    const w=state.favWx[favKey(f.lat,f.lon)];
+    const wc=w&&w.c!=null?wcode(w.c,w.day):null;
+    return `<div class="fav-card${favKey(f.lat,f.lon)===cur?' current':''}" data-k="${k}">
+      <a class="fav-link" href="${esc(locHash(f.lat,f.lon,f.name,f.sub))}" title="Afficher la météo de ce lieu">
+        ${wc?msIcon(wc[1],wc[2],26):'<span class="material-symbols-outlined text-[24px] text-outline">location_on</span>'}
+        <span class="min-w-0 flex-1">
+          <span class="fav-name">${esc(f.name)}</span>
+          <span class="fav-sub">${f.sub?esc(f.sub)+' · ':''}${fmtCoords(f.lat,f.lon)}${wc?' · '+esc(wc[0]):''}</span>
+        </span>
+        <span class="fav-temp">${w&&w.t!=null?cToDisplay(w.t)+'°':'--'}</span>
+      </a>
+      <div class="fav-actions">
+        <button class="icon-btn" type="button" data-act="up" title="Monter"${k===0?' disabled style="opacity:.3"':''}><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+        <button class="icon-btn" type="button" data-act="down" title="Descendre"${k===n-1?' disabled style="opacity:.3"':''}><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+        <button class="icon-btn" type="button" data-act="rename" title="Renommer"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+        <button class="icon-btn" type="button" data-act="copy" title="Copier le lien direct"><span class="material-symbols-outlined text-[18px]">link</span></button>
+        <button class="icon-btn" type="button" data-act="del" title="Supprimer"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+      </div>
+    </div>`;
+  }).join('');
+  if(n&&state.favWxAt){
+    $('#favStatus').textContent='Conditions actuelles : Open-Meteo (modèle choisi automatiquement), chargées à '
+      +new Date(state.favWxAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'.';
+  } else if(!n) $('#favStatus').textContent='';
+}
+$('#favList').addEventListener('click',async e=>{
+  const card=e.target.closest('.fav-card'); if(!card) return;
+  const k=parseInt(card.dataset.k,10), f=state.favs[k]; if(!f) return;
+  if(e.target.closest('input')){ e.preventDefault(); return; }
+  if(e.target.closest('.fav-link')){
+    e.preventDefault();
+    goToLocation(f.lat,f.lon,f.name,f.sub);
+    return;
+  }
+  const btn=e.target.closest('button[data-act]'); if(!btn||btn.disabled) return;
+  const act=btn.dataset.act;
+  if(act==='up'&&k>0){ [state.favs[k-1],state.favs[k]]=[state.favs[k],state.favs[k-1]]; saveFavs(); renderFavs(); }
+  else if(act==='down'&&k<state.favs.length-1){ [state.favs[k+1],state.favs[k]]=[state.favs[k],state.favs[k+1]]; saveFavs(); renderFavs(); }
+  else if(act==='del') removeFav(k);
+  else if(act==='copy'){
+    const url=favUrl(f);
+    try{ await navigator.clipboard.writeText(url); showToast('Lien copié : '+f.name); }
+    catch(err){ window.prompt('Copiez ce lien :',url); }
+  }
+  else if(act==='rename'){
+    const nameEl=card.querySelector('.fav-name'), inp=document.createElement('input');
+    inp.className='fav-name-input'; inp.value=f.name; inp.maxLength=60;
+    nameEl.replaceWith(inp); inp.focus(); inp.select();
+    let done=false;
+    const finish=save=>{
+      if(done) return; done=true;
+      const v=inp.value.trim();
+      if(save&&v&&v!==f.name){
+        f.name=v; saveFavs();
+        if(favKey(f.lat,f.lon)===favKey(state.lat,state.lon)){ state.name=v; updateLocationUI(); }
+      }
+      renderFavs();
+    };
+    inp.addEventListener('keydown',ev=>{ if(ev.key==='Enter') finish(true); else if(ev.key==='Escape') finish(false); });
+    inp.addEventListener('blur',()=>finish(true));
+  }
+});
+
+async function fetchFavWeather(){
+  const favs=state.favs.slice(); if(!favs.length) return;
+  const url='https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
+    latitude:favs.map(f=>f.lat).join(','), longitude:favs.map(f=>f.lon).join(','),
+    current:'temperature_2m,weather_code,is_day', timezone:'auto'
+  });
+  try{
+    const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status);
+    let j=await r.json(); if(!Array.isArray(j)) j=[j];
+    j.forEach((d,k)=>{ if(d&&d.current&&favs[k]) state.favWx[favKey(favs[k].lat,favs[k].lon)]={t:d.current.temperature_2m,c:d.current.weather_code,day:d.current.is_day}; });
+    state.favWxAt=Date.now(); renderFavs();
+  }catch(err){
+    console.warn('Favoris :',err);
+    $('#favStatus').textContent='Conditions actuelles indisponibles ('+err.message+').';
+  }
+}
+function refreshFavWeatherIfStale(){ if(Date.now()-state.favWxAt>15*60*1000) fetchFavWeather(); }
+// Lien ouvert ou modifié pendant que l'app est déjà affichée
+window.addEventListener('hashchange',()=>{
+  const l=parseLocHash(location.hash);
+  if(l&&favKey(l.lat,l.lon)!==favKey(state.lat,state.lon)) goToLocation(l.lat,l.lon,l.name,l.sub);
+});
+renderFavs();
+
 /* ===================== INIT ===================== */
 (function initLocation(){
   let last=null;
   try{ last=JSON.parse(localStorage.getItem('won_lastLocation')||'null'); }catch(e){}
-  if(last&&isFinite(last.lat)&&isFinite(last.lon)){
+  const fromLink=parseLocHash(location.hash);
+  if(fromLink){
+    map.setView([fromLink.lat,fromLink.lon],8);
+    setLocation(fromLink.lat,fromLink.lon,fromLink.name,fromLink.sub);
+  } else if(last&&isFinite(last.lat)&&isFinite(last.lon)){
     map.setView([last.lat,last.lon],8);
     setLocation(last.lat,last.lon,last.name||'Lieu enregistré',last.sub||'');
   } else {

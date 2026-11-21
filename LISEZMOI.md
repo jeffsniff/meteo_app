@@ -23,6 +23,16 @@ meteo-pwa/
 - Message « Nouvelle version disponible » quand `sw.js` change.
 - Marges pour l'encoche des iPhone en mode plein écran.
 
+## Version 1.3 — lieux favoris
+
+- **Ajouter** : étoile à côté du nom du lieu (carte principale), ou bouton « Ajouter le lieu affiché » dans l'onglet Favoris. L'étoile pleine (ambre) indique que le lieu affiché est déjà en favori ; la toucher le retire.
+- **Onglet Favoris** (aussi dans la barre du bas sur mobile) : pour chaque lieu, nom, région, coordonnées, conditions actuelles (icône, description, température — Open-Meteo, modèle choisi automatiquement, rechargées au plus toutes les 15 min à l'ouverture de l'onglet).
+- **Aller au lieu** : toucher la ligne affiche sa météo, centre la carte et remonte en haut de page.
+- **Actions** : monter / descendre, renommer (Entrée pour valider, Échap pour annuler), copier le lien direct, supprimer.
+- **Lien direct** : de la forme `…/index.html#lieu=47.3941,0.6848&nom=Tours&info=Centre-Val de Loire`. Ouvert dans un navigateur, il affiche directement ce lieu ; il peut être enregistré en marque-page ou envoyé. L'adresse de la page est mise à jour à chaque changement de lieu : le lien du lieu affiché est donc toujours celui de la barre d'adresse.
+- **Stockage** : les favoris sont enregistrés dans le navigateur de l'appareil (localStorage), sans compte ni serveur. Ils ne se synchronisent pas entre appareils. Sur iPhone/iPad, l'app installée sur l'écran d'accueil a un stockage distinct de Safari : les favoris créés dans l'un n'apparaissent pas dans l'autre. Effacer les données du site supprime les favoris.
+- **Limite iOS** : un lien direct ouvert depuis un message ou une note s'ouvre dans Safari, pas dans l'app installée.
+
 ## Version 1.2 — radar animé et relevés des stations
 
 ### Radar des précipitations : 2 dernières heures
